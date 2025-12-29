@@ -1,16 +1,23 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:receipt_parser/data/receipt_database.dart';
+import 'package:receipt_parser/domain/models/receipt_entry.dart';
 import 'package:receipt_parser/domain/models/receipt_draft.dart';
 
 class ReceiptEditScreen extends StatefulWidget {
   final ReceiptDraft draft;
   final List<String> ocrLines;
+  final String imagePath;
 
   const ReceiptEditScreen({
     super.key,
     required this.draft,
     required this.ocrLines,
+    required this.imagePath,
   });
 
   @override
@@ -39,14 +46,52 @@ class _ReceiptEditScreenState extends State<ReceiptEditScreen> {
   }
 
   void _save() {
-    // Na razie: tylko pokazujemy, co by było zapisane.
+    _persist();
+  }
+
+  Future<void> _persist() async {
     final merchant = _merchantCtrl.text.trim();
     final date = _dateCtrl.text.trim();
     final total = _totalCtrl.text.trim();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Zapis (MVP): $merchant | $date | $total')),
-    );
+    try {
+      final savedImagePath = await _copyImage(widget.imagePath);
+      final entry = ReceiptEntry(
+        merchant: merchant.isEmpty ? null : merchant,
+        date: date.isEmpty ? null : date,
+        total: total.isEmpty ? null : total,
+        imagePath: savedImagePath,
+        ocrLines: widget.ocrLines,
+        createdAt: DateTime.now(),
+      );
+
+      await ReceiptDatabase.instance.insertReceipt(entry);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paragon zapisany w historii.')),
+      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd przy zapisie: $e')),
+      );
+    }
+  }
+
+  Future<String> _copyImage(String sourcePath) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final receiptsDir = Directory(p.join(directory.path, 'receipts'));
+    if (!receiptsDir.existsSync()) {
+      receiptsDir.createSync(recursive: true);
+    }
+
+    final fileName =
+        'receipt_${DateTime.now().millisecondsSinceEpoch}${p.extension(sourcePath)}';
+    final destinationPath = p.join(receiptsDir.path, fileName);
+    await File(sourcePath).copy(destinationPath);
+    return destinationPath;
   }
 
   @override

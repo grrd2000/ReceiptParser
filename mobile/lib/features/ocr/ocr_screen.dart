@@ -44,7 +44,11 @@ class _OcrScreenState extends State<OcrScreen> {
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => ReceiptEditScreen(draft: draft, ocrLines: lines),
+          builder: (_) => ReceiptEditScreen(
+            draft: draft,
+            ocrLines: lines,
+            imagePath: widget.imagePath,
+          ),
         ),
       );
     } catch (e) {
