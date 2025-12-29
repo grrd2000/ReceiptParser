@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:receipt_parser/features/capture/capture_screen.dart';
+import 'package:receipt_parser/features/manual/manual_entry_screen.dart';
 import 'package:receipt_parser/features/history/history_screen.dart';
 import 'package:receipt_parser/theme/app_theme.dart';
 
@@ -32,6 +33,7 @@ class _HomeShellState extends State<_HomeShell> {
   Widget build(BuildContext context) {
     final screens = [
       const CaptureScreen(),
+      const ManualEntryScreen(),
       HistoryScreen(key: _historyKey),
     ];
 
@@ -44,7 +46,7 @@ class _HomeShellState extends State<_HomeShell> {
         selectedIndex: _index,
         onDestinationSelected: (i) {
           setState(() => _index = i);
-          if (i == 1) {
+          if (i == 2) {
             _historyKey.currentState?.reload();
           }
         },
@@ -53,6 +55,11 @@ class _HomeShellState extends State<_HomeShell> {
             icon: Icon(Icons.photo_camera_outlined),
             selectedIcon: Icon(Icons.photo_camera),
             label: 'Skanuj',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.edit_note_outlined),
+            selectedIcon: Icon(Icons.edit_note),
+            label: 'Dodaj ręcznie',
           ),
           NavigationDestination(
             icon: Icon(Icons.history),

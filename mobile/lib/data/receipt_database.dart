@@ -11,7 +11,7 @@ class ReceiptDatabase {
 
   static final ReceiptDatabase instance = ReceiptDatabase._();
   static const _dbName = 'receipts.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
   static const _table = 'receipts';
 
   Database? _db;
@@ -38,9 +38,17 @@ class ReceiptDatabase {
             total TEXT,
             image_path TEXT,
             ocr_lines TEXT,
-            created_at TEXT
+            created_at TEXT,
+            is_manual INTEGER NOT NULL DEFAULT 0
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0',
+          );
+        }
       },
     );
   }
@@ -54,6 +62,7 @@ class ReceiptDatabase {
       'image_path': entry.imagePath,
       'ocr_lines': entry.ocrLines.join('\n'),
       'created_at': entry.createdAt.toIso8601String(),
+      'is_manual': entry.isManual ? 1 : 0,
     });
   }
 
@@ -74,6 +83,7 @@ class ReceiptDatabase {
         ocrLines: (r['ocr_lines'] as String? ?? '').split('\n'),
         createdAt: DateTime.tryParse(r['created_at'] as String? ?? '') ??
             DateTime.now(),
+        isManual: (r['is_manual'] as int? ?? 0) == 1,
       );
     }).toList();
   }
