@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:receipt_parser/domain/models/receipt_entry.dart';
+import 'package:receipt_parser/domain/models/receipt_item.dart';
 import 'package:sqflite/sqflite.dart';
 
 class ReceiptDatabase {
@@ -11,7 +13,7 @@ class ReceiptDatabase {
 
   static final ReceiptDatabase instance = ReceiptDatabase._();
   static const _dbName = 'receipts.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
   static const _table = 'receipts';
 
   Database? _db;
@@ -37,6 +39,7 @@ class ReceiptDatabase {
             date TEXT,
             total TEXT,
             image_path TEXT,
+            items_json TEXT,
             ocr_lines TEXT,
             created_at TEXT,
             is_manual INTEGER NOT NULL DEFAULT 0
@@ -47,6 +50,11 @@ class ReceiptDatabase {
         if (oldVersion < 2) {
           await db.execute(
             'ALTER TABLE $_table ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN items_json TEXT',
           );
         }
       },
@@ -60,6 +68,9 @@ class ReceiptDatabase {
       'date': entry.date,
       'total': entry.total,
       'image_path': entry.imagePath,
+      'items_json': jsonEncode(
+        entry.items.map((e) => e.toMap()).toList(),
+      ),
       'ocr_lines': entry.ocrLines.join('\n'),
       'created_at': entry.createdAt.toIso8601String(),
       'is_manual': entry.isManual ? 1 : 0,
@@ -80,11 +91,24 @@ class ReceiptDatabase {
         date: r['date'] as String?,
         total: r['total'] as String?,
         imagePath: r['image_path'] as String?,
+        items: _decodeItems(r['items_json'] as String?),
         ocrLines: (r['ocr_lines'] as String? ?? '').split('\n'),
         createdAt: DateTime.tryParse(r['created_at'] as String? ?? '') ??
             DateTime.now(),
         isManual: (r['is_manual'] as int? ?? 0) == 1,
       );
     }).toList();
+  }
+
+  List<ReceiptItem> _decodeItems(String? json) {
+    if (json == null || json.isEmpty) return [];
+    try {
+      final list = jsonDecode(json) as List<dynamic>;
+      return list
+          .map((e) => ReceiptItem.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 }
