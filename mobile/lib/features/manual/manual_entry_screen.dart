@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:receipt_parser/data/receipt_database.dart';
 import 'package:receipt_parser/domain/models/receipt_entry.dart';
 import 'package:receipt_parser/domain/models/receipt_item.dart';
@@ -17,6 +18,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
   final _notesCtrl = TextEditingController();
   final List<_ItemControllers> _itemCtrls = [_ItemControllers()];
   final ValueNotifier<double> _totalValueNotifier = ValueNotifier(0);
+  DateTime? _selectedDate;
 
   late final AnimationController _addButtonController;
   late final Animation<double> _addButtonScale;
@@ -106,6 +108,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
       _dateCtrl.clear();
       _notesCtrl.clear();
       setState(() {
+        _selectedDate = null;
         for (final item in _itemCtrls) {
           item.dispose();
         }
@@ -167,6 +170,26 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
       _itemCtrls.add(_ItemControllers());
     });
     _updateTotalFromItems();
+  }
+
+  Future<void> _pickDate() async {
+    final initialDate = _selectedDate ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Wybierz datę paragonu',
+      cancelText: 'Anuluj',
+      confirmText: 'Ustaw',
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateCtrl.text = DateFormat('dd.MM.yyyy').format(picked);
+      });
+    }
   }
 
   void _removeItemRow(int index) {
@@ -272,8 +295,14 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                       _LabeledField(
                         label: 'Data',
                         controller: _dateCtrl,
-                        hint: 'DD.MM.RRRR',
-                        keyboardType: TextInputType.datetime,
+                        hint: 'Wybierz datę (dd.MM.rrrr)',
+                        readOnly: true,
+                        onTap: _saving ? null : _pickDate,
+                        suffix: IconButton(
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          tooltip: 'Otwórz kalendarz',
+                          onPressed: _saving ? null : _pickDate,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -524,6 +553,8 @@ class _LabeledField extends StatelessWidget {
   final TextEditingController controller;
   final TextInputType? keyboardType;
   final Widget? suffix;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   const _LabeledField({
     required this.label,
@@ -533,6 +564,8 @@ class _LabeledField extends StatelessWidget {
     this.minLines,
     this.keyboardType,
     this.suffix,
+    this.readOnly = false,
+    this.onTap,
   });
 
   @override
@@ -551,6 +584,8 @@ class _LabeledField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: keyboardType,
+          readOnly: readOnly,
+          onTap: onTap,
           maxLines: maxLines ?? 1,
           minLines: minLines,
           decoration: InputDecoration(
