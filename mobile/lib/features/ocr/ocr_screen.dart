@@ -67,7 +67,7 @@ class _OcrScreenState extends State<OcrScreen> {
       appBar: AppBar(title: const Text('OCR')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Center(child: Text(_error ?? 'Gotowe')),
+          : Center(child: Text(_error ?? 'GotoweXD')),
     );
   }
 }
