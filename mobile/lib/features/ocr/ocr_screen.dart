@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:receipt_parser/domain/parsing/receipt_basic_parser.dart';
+import 'package:receipt_parser/features/receipt_edit/receipt_edit_screen.dart';
 
 class OcrScreen extends StatefulWidget {
   final String imagePath;
@@ -11,8 +13,8 @@ class OcrScreen extends StatefulWidget {
 
 class _OcrScreenState extends State<OcrScreen> {
   late final TextRecognizer _recognizer;
-  String _text = '';
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -26,14 +28,28 @@ class _OcrScreenState extends State<OcrScreen> {
       final inputImage = InputImage.fromFilePath(widget.imagePath);
       final recognizedText = await _recognizer.processImage(inputImage);
 
-      // na start: cały tekst
-      setState(() {
-        _text = recognizedText.text;
-        _loading = false;
-      });
+      final lines = <String>[];
+      for (final block in recognizedText.blocks) {
+        for (final line in block.lines) {
+          final t = line.text.trim();
+          if (t.isNotEmpty) lines.add(t);
+        }
+      }
+
+      final parser = ReceiptBasicParser();
+      final draft = parser.parse(lines);
+
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ReceiptEditScreen(draft: draft, ocrLines: lines),
+        ),
+      );
     } catch (e) {
       setState(() {
-        _text = 'OCR error: $e';
+        _error = '$e';
         _loading = false;
       });
     }
@@ -48,13 +64,10 @@ class _OcrScreenState extends State<OcrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('OCR wynik')),
+      appBar: AppBar(title: const Text('OCR')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: SelectableText(_text),
-            ),
+          : Center(child: Text(_error ?? 'Gotowe')),
     );
   }
 }
