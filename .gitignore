@@ -1,6 +1,9 @@
 ############################################
 # OS / Editor junk
 ############################################
+.fleet/
+.history
+.svn/
 .DS_Store
 .DS_Store?
 ._*
@@ -13,7 +16,7 @@ desktop.ini
 ############################################
 # VS Code
 ############################################
-.vscode/*
+**/.vscode/*
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -23,6 +26,7 @@ desktop.ini
 # JetBrains (IntelliJ/Android Studio)
 ############################################
 .idea/
+**/.idea/
 *.iml
 *.ipr
 *.iws
@@ -30,13 +34,19 @@ desktop.ini
 ############################################
 # Flutter / Dart (all platforms)
 ############################################
+**/.android/
 **/.dart_tool/
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
 **/.packages
+**/.pub-cache/
+**/.pub/
+**/.fvm/
 **/build/
 **/coverage/
 **/*.log
+**/doc/api/
+**/lib/generated_plugin_registrant.dart
 
 # Flutter tool state (safe to ignore)
 **/.metadata
@@ -64,6 +74,7 @@ desktop.ini
 ############################################
 # iOS / Xcode / CocoaPods
 ############################################
+**/ios/Flutter/.last_build_id
 **/Pods/
 **/.symlinks/
 **/*.xcworkspace
