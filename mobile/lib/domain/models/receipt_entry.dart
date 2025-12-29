@@ -6,6 +6,7 @@ class ReceiptEntry {
   final String? imagePath;
   final List<String> ocrLines;
   final DateTime createdAt;
+  final bool isManual;
 
   const ReceiptEntry({
     this.id,
@@ -15,6 +16,7 @@ class ReceiptEntry {
     this.imagePath,
     required this.ocrLines,
     required this.createdAt,
+    this.isManual = false,
   });
 
   ReceiptEntry copyWith({
@@ -25,6 +27,7 @@ class ReceiptEntry {
     String? imagePath,
     List<String>? ocrLines,
     DateTime? createdAt,
+    bool? isManual,
   }) {
     return ReceiptEntry(
       id: id ?? this.id,
@@ -34,6 +37,7 @@ class ReceiptEntry {
       imagePath: imagePath ?? this.imagePath,
       ocrLines: ocrLines ?? this.ocrLines,
       createdAt: createdAt ?? this.createdAt,
+      isManual: isManual ?? this.isManual,
     );
   }
 }

@@ -78,7 +78,43 @@ class HistoryScreenState extends State<HistoryScreen> {
                 return Card(
                   child: ListTile(
                     leading: _ReceiptThumbnail(path: item.imagePath),
-                    title: Text(item.merchant ?? 'Paragon #${item.id ?? '?'}'),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(item.merchant ?? 'Paragon #${item.id ?? '?'}'),
+                        ),
+                        if (item.isManual)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_note,
+                                    size: 16, color: Colors.orange.shade700),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Ręcznie',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Colors.orange.shade800,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -91,6 +127,14 @@ class HistoryScreenState extends State<HistoryScreen> {
                               .labelSmall
                               ?.copyWith(color: Colors.grey.shade700),
                         ),
+                        if (item.isManual)
+                          Text(
+                            'Dodano ręcznie',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                       ],
                     ),
                     onTap: () => _showOcrDialog(item),
@@ -129,11 +173,21 @@ class HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 240,
-                  child: ListView.separated(
-                    itemCount: entry.ocrLines.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (_, i) => Text(entry.ocrLines[i]),
-                  ),
+                  child: entry.ocrLines.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Brak zapisanych linii OCR.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: Colors.grey.shade700),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: entry.ocrLines.length,
+                          separatorBuilder: (_, __) => const Divider(),
+                          itemBuilder: (_, i) => Text(entry.ocrLines[i]),
+                        ),
                 ),
               ],
             ),
