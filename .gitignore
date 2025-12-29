@@ -1,0 +1,162 @@
+############################
+# OS / Editor
+############################
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# VS Code (zostawiamy opcjonalnie launch/settings jeśli chcesz)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+############################
+# Secrets / env
+############################
+.env
+.env.*
+*.pem
+*.key
+
+############################
+# Flutter / Dart (mobile/)
+############################
+# Tooling / caches
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.fvm/
+**/.metadata.lock
+
+# Build outputs
+**/build/
+**/flutter_*.png
+**/coverage/
+
+# Optional: generated docs / tooling
+**/doc/api/
+
+############################
+# Android (mobile/android/)
+############################
+**/android/.gradle/
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/**/generated/
+**/android/**/captures/
+**/android/**/outputs/
+**/android/**/intermediates/
+**/android/**/build/
+**/android/**/.cxx/
+**/android/**/release/
+**/android/**/debug/
+
+# Signing (NEVER commit)
+**/android/key.properties
+**/*.jks
+**/*.keystore
+
+# Kotlin/Java tooling
+**/*.iml
+
+############################
+# iOS (mobile/ios/)
+############################
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Runner.xcworkspace/
+**/ios/**/DerivedData/
+**/*.xcuserstate
+**/*.xcuserdata/
+
+############################
+# Web / Desktop (jeśli kiedyś użyjesz)
+############################
+**/linux/flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/web/.dart_tool/
+
+############################
+# Python (backend/)
+############################
+# Bytecode / caches
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.coverage
+**/htmlcov/
+**/coverage.xml
+
+# Virtual envs
+**/.venv/
+**/venv/
+**/ENV/
+**/env/
+
+# Build / packaging
+**/dist/
+**/build/
+**/*.egg-info/
+**/.eggs/
+
+# Jupyter
+**/.ipynb_checkpoints/
+
+############################
+# Logs / temp / runtime
+############################
+**/*.log
+**/tmp/
+**/.tmp/
+
+############################
+# Database / Docker volumes (local only)
+############################
+**/postgres-data/
+**/pgdata/
+**/db-data/
+**/docker-data/
+
+############################
+# ML / data artifacts (jeśli dodasz później)
+############################
+# duże modele / wagi
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.tflite
+**/*.h5
+**/*.ckpt
+
+# eksperymenty / tracking
+**/mlruns/
+**/wandb/
+**/tensorboard/
+**/runs/
+
+# dane (zostaw jeśli będziesz wersjonował DVC)
+data/
+datasets/
+**/receipts_images/
+**/*.parquet
+**/*.feather
+
+############################
+# Terraform / IaC (jeśli kiedyś)
+############################
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
