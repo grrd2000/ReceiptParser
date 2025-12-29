@@ -10,14 +10,35 @@ class ManualEntryScreen extends StatefulWidget {
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();
 }
 
-class _ManualEntryScreenState extends State<ManualEntryScreen> {
+class _ManualEntryScreenState extends State<ManualEntryScreen>
+    with SingleTickerProviderStateMixin {
   final _merchantCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _totalCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  final List<_ItemControllers> _itemCtrls = [ _ItemControllers() ];
+  final List<_ItemControllers> _itemCtrls = [_ItemControllers()];
+  final ValueNotifier<double> _totalValueNotifier = ValueNotifier(0);
+
+  late final AnimationController _addButtonController;
+  late final Animation<double> _addButtonScale;
 
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _addButtonController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+    _addButtonScale = CurvedAnimation(
+      parent: _addButtonController,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeIn,
+    );
+
+    _updateTotalFromItems();
+  }
 
   @override
   void dispose() {
@@ -25,6 +46,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     _dateCtrl.dispose();
     _totalCtrl.dispose();
     _notesCtrl.dispose();
+    _addButtonController.dispose();
+    _totalValueNotifier.dispose();
     for (final c in _itemCtrls) {
       c.dispose();
     }
@@ -36,13 +59,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     final date = _dateCtrl.text.trim();
     final notes = _notesCtrl.text.trim();
     final items = _buildItems();
-    final total = _maybeAutofillTotal(items);
+    final total = _updateTotalFromItems();
 
-    if (merchant.isEmpty &&
-        date.isEmpty &&
-        total.isEmpty &&
-        notes.isEmpty &&
-        items.isEmpty) {
+    if (merchant.isEmpty && date.isEmpty && notes.isEmpty && items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Uzupełnij przynajmniej jedno pole, aby zapisać.'),
@@ -85,7 +104,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       );
       _merchantCtrl.clear();
       _dateCtrl.clear();
-      _totalCtrl.clear();
       _notesCtrl.clear();
       setState(() {
         for (final item in _itemCtrls) {
@@ -95,6 +113,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           ..clear()
           ..add(_ItemControllers());
       });
+      _totalCtrl.clear();
+      _totalValueNotifier.value = 0;
+      _updateTotalFromItems();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,22 +140,41 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         .toList();
   }
 
-  String _maybeAutofillTotal(List<ReceiptItem> items) {
-    if (_totalCtrl.text.trim().isNotEmpty) return _totalCtrl.text.trim();
-    if (items.length == 1) {
-      final price = items.first.price?.trim();
-      if (price != null && price.isNotEmpty) {
-        _totalCtrl.text = price;
-        return price;
+  String _updateTotalFromItems() {
+    double runningTotal = 0;
+    for (final ctrl in _itemCtrls) {
+      final parsed = _parsePrice(ctrl.priceCtrl.text);
+      if (parsed != null) {
+        runningTotal += parsed;
       }
     }
-    return '';
+
+    _totalValueNotifier.value = runningTotal;
+    final formatted = _formatCurrency(runningTotal);
+    if (_totalCtrl.text != formatted) {
+      _totalCtrl.value = _totalCtrl.value.copyWith(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    }
+    return formatted;
+  }
+
+  double? _parsePrice(String raw) {
+    final sanitized = raw.trim().replaceAll(' ', '').replaceAll(',', '.');
+    if (sanitized.isEmpty) return null;
+    return double.tryParse(sanitized);
+  }
+
+  String _formatCurrency(double value) {
+    return value.toStringAsFixed(2).replaceAll('.', ',');
   }
 
   void _addItemRow() {
     setState(() {
       _itemCtrls.add(_ItemControllers());
     });
+    _updateTotalFromItems();
   }
 
   void _removeItemRow(int index) {
@@ -143,6 +183,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       final removed = _itemCtrls.removeAt(index);
       removed.dispose();
     });
+    _updateTotalFromItems();
+  }
+
+  void _handleAddItem() {
+    _addButtonController.forward(from: 0).then((_) => _addButtonController.reverse());
+    _addItemRow();
   }
 
   @override
@@ -251,10 +297,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
-                          IconButton.filledTonal(
-                            onPressed: _saving ? null : _addItemRow,
-                            icon: const Icon(Icons.add),
-                            tooltip: 'Dodaj pozycję',
+                          ScaleTransition(
+                            scale: _addButtonScale,
+                            child: IconButton.filledTonal(
+                              onPressed: _saving ? null : _handleAddItem,
+                              icon: const Icon(Icons.add),
+                              tooltip: 'Dodaj pozycję',
+                            ),
                           ),
                         ],
                       ),
@@ -267,37 +316,108 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                             priceCtrl: _itemCtrls[i].priceCtrl,
                             onRemove:
                                 _itemCtrls.length == 1 || _saving ? null : () => _removeItemRow(i),
-                            onPriceChanged: () => _maybeAutofillTotal(_buildItems()),
+                            onPriceChanged: _updateTotalFromItems,
                           ),
                         );
                       }),
                       const SizedBox(height: 12),
-                      _LabeledField(
-                        label: 'Kwota total',
-                        controller: _totalCtrl,
-                        hint: 'np. 123,45',
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
-                        suffix: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'PLN',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w700,
+                      ValueListenableBuilder<double>(
+                        valueListenable: _totalValueNotifier,
+                        builder: (context, total, _) {
+                          final displayed = _formatCurrency(total);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Kwota total',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: Colors.grey.shade800,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 250),
+                                    transitionBuilder: (child, animation) =>
+                                        ScaleTransition(
+                                      scale: animation,
+                                      child: FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      ),
+                                    ),
+                                    child: Container(
+                                      key: ValueKey(displayed),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '$displayed PLN',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: _totalCtrl,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  hintText: 'np. 123,45',
+                                  suffixIcon: Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        'PLN',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                  suffixIconConstraints: const BoxConstraints(
+                                    minHeight: 0,
+                                    minWidth: 0,
+                                  ),
                                 ),
-                          ),
-                        ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 14),
                       _LabeledField(
