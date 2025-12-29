@@ -14,7 +14,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
     with SingleTickerProviderStateMixin {
   final _merchantCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
-  final _totalCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final List<_ItemControllers> _itemCtrls = [_ItemControllers()];
   final ValueNotifier<double> _totalValueNotifier = ValueNotifier(0);
@@ -31,6 +30,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
       vsync: this,
       duration: const Duration(milliseconds: 240),
     );
+    _addButtonController.value = 1;
     _addButtonScale = CurvedAnimation(
       parent: _addButtonController,
       curve: Curves.easeOutBack,
@@ -44,7 +44,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
   void dispose() {
     _merchantCtrl.dispose();
     _dateCtrl.dispose();
-    _totalCtrl.dispose();
     _notesCtrl.dispose();
     _addButtonController.dispose();
     _totalValueNotifier.dispose();
@@ -59,7 +58,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
     final date = _dateCtrl.text.trim();
     final notes = _notesCtrl.text.trim();
     final items = _buildItems();
-    final total = _updateTotalFromItems();
+    final totalValue = _updateTotalFromItems();
+    final total = totalValue > 0 ? _formatCurrency(totalValue) : null;
 
     if (merchant.isEmpty && date.isEmpty && notes.isEmpty && items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,7 +88,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
       final entry = ReceiptEntry(
         merchant: merchant.isEmpty ? null : merchant,
         date: date.isEmpty ? null : date,
-        total: total.isEmpty ? null : total,
+        total: total,
         imagePath: null,
         items: items,
         ocrLines: ocrLines,
@@ -113,7 +113,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
           ..clear()
           ..add(_ItemControllers());
       });
-      _totalCtrl.clear();
       _totalValueNotifier.value = 0;
       _updateTotalFromItems();
     } catch (e) {
@@ -140,7 +139,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
         .toList();
   }
 
-  String _updateTotalFromItems() {
+  double _updateTotalFromItems() {
     double runningTotal = 0;
     for (final ctrl in _itemCtrls) {
       final parsed = _parsePrice(ctrl.priceCtrl.text);
@@ -150,14 +149,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
     }
 
     _totalValueNotifier.value = runningTotal;
-    final formatted = _formatCurrency(runningTotal);
-    if (_totalCtrl.text != formatted) {
-      _totalCtrl.value = _totalCtrl.value.copyWith(
-        text: formatted,
-        selection: TextSelection.collapsed(offset: formatted.length),
-      );
-    }
-    return formatted;
+    return runningTotal;
   }
 
   double? _parsePrice(String raw) {
@@ -187,7 +179,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
   }
 
   void _handleAddItem() {
-    _addButtonController.forward(from: 0).then((_) => _addButtonController.reverse());
+    _addButtonController.forward(from: 0.7);
     _addItemRow();
   }
 
@@ -297,13 +289,25 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
-                          ScaleTransition(
-                            scale: _addButtonScale,
-                            child: IconButton.filledTonal(
-                              onPressed: _saving ? null : _handleAddItem,
-                              icon: const Icon(Icons.add),
-                              tooltip: 'Dodaj pozycję',
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Dodaj',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(color: Colors.grey.shade700),
+                              ),
+                              const SizedBox(width: 6),
+                              ScaleTransition(
+                                scale: _addButtonScale,
+                                child: IconButton.filledTonal(
+                                  onPressed: _saving ? null : _handleAddItem,
+                                  icon: const Icon(Icons.add),
+                                  tooltip: 'Dodaj pozycję',
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -320,6 +324,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                           ),
                         );
                       }),
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: _saving ? null : _handleAddItem,
+                        icon: const Icon(Icons.add_box_outlined),
+                        label: const Text('Dodaj kolejną pozycję'),
+                      ),
                       const SizedBox(height: 12),
                       ValueListenableBuilder<double>(
                         valueListenable: _totalValueNotifier,
@@ -380,40 +390,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller: _totalCtrl,
-                                readOnly: true,
-                                decoration: InputDecoration(
-                                  hintText: 'np. 123,45',
-                                  suffixIcon: Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        'PLN',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                              color: Colors.grey.shade700,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                  suffixIconConstraints: const BoxConstraints(
-                                    minHeight: 0,
-                                    minWidth: 0,
-                                  ),
-                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Kwota wyliczana automatycznie na podstawie cen pozycji.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.grey.shade600),
                               ),
                             ],
                           );
@@ -484,41 +467,51 @@ class _ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: TextField(
-            controller: nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Nazwa produktu',
-              hintText: 'np. Chleb',
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nazwa produktu',
+                  hintText: 'np. Chleb',
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            controller: priceCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Cena',
-              hintText: 'np. 12,34',
-              suffixText: 'PLN',
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                controller: priceCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Cena',
+                  hintText: 'np. 12,34',
+                  suffixText: 'PLN',
+                ),
+                onChanged: (_) => onPriceChanged?.call(),
+              ),
             ),
-            onChanged: (_) => onPriceChanged?.call(),
-          ),
+            const SizedBox(width: 6),
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.close),
+              tooltip: 'Usuń pozycję',
+            ),
+          ],
         ),
-        const SizedBox(width: 6),
-        IconButton(
-          onPressed: onRemove,
-          icon: const Icon(Icons.close),
-          tooltip: 'Usuń pozycję',
-        ),
-      ],
+      ),
     );
   }
 }
